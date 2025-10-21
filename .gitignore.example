@@ -1,0 +1,42 @@
+# Environment variables (contains API keys)
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large data files (optional - comment out if you want to track them)
+# data/raw/*.csv
+# data/processed/*.csv
+
+# Model files (optional - comment out if you want to track them)
+# models/*.pkl
+
+# Selenium debug files
+debug_page_source.html
+seleniumtest.py
+
+# Report drafts
+*.pdf.draft
+
