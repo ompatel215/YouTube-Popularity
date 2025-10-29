@@ -147,4 +147,3 @@ python evaluate.py
 - [ ] Repository set to public
 - [ ] README.md complete
 
-Good luck with your project!
