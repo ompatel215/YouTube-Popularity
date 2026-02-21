@@ -42,13 +42,15 @@ def train_scraped_model(
     print(f"Loaded {len(df)} videos")
     
     # Define features for scraped data
+    # Note: views_per_day excluded — it is derived from the target (views / days),
+    # which causes data leakage and inflates R² artificially.
     numeric_features = [
         'duration_minutes',
         'time_since_upload_days',
         'title_len',
         'title_char_len',
         'title_upper_ratio',
-        'views_per_day'
+        'title_sentiment'
     ]
     
     boolean_features = [
@@ -121,40 +123,48 @@ def train_scraped_model(
         raise ValueError(f"Unknown model_type: {model_type}")
     
     model.fit(X_train_scaled, y_train)
-    
+
+    # Cross-validation on training data
+    print("\n" + "="*60)
+    print("CROSS-VALIDATION (5-fold, training data)")
+    print("="*60)
+    cv_scores = cross_val_score(model, X_train_scaled, y_train, cv=5, scoring='r2', n_jobs=-1)
+    print(f"\n  Fold R² scores: {[f'{s:.4f}' for s in cv_scores]}")
+    print(f"  Mean R²: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
+
     # Predictions
     y_train_pred = model.predict(X_train_scaled)
     y_test_pred = model.predict(X_test_scaled)
-    
+
     # Evaluation
     print("\n" + "="*60)
     print("TRAINING RESULTS")
     print("="*60)
-    
+
     train_mse = mean_squared_error(y_train, y_train_pred)
     train_rmse = np.sqrt(train_mse)  # Compatible with all sklearn versions
     train_mae = mean_absolute_error(y_train, y_train_pred)
     train_r2 = r2_score(y_train, y_train_pred)
-    
+
     print(f"\nTraining Set Performance:")
     print(f"  RMSE: {train_rmse:,.2f}")
     print(f"  MAE: {train_mae:,.2f}")
     print(f"  R²: {train_r2:.4f}")
-    
+
     print("\n" + "="*60)
     print("TEST RESULTS")
     print("="*60)
-    
+
     test_mse = mean_squared_error(y_test, y_test_pred)
     test_rmse = np.sqrt(test_mse)  # Compatible with all sklearn versions
     test_mae = mean_absolute_error(y_test, y_test_pred)
     test_r2 = r2_score(y_test, y_test_pred)
-    
+
     print(f"\nTest Set Performance:")
     print(f"  RMSE: {test_rmse:,.2f}")
     print(f"  MAE: {test_mae:,.2f}")
     print(f"  R²: {test_r2:.4f}")
-    
+
     # Feature importance
     if hasattr(model, 'feature_importances_'):
         print("\n" + "="*60)
@@ -164,11 +174,11 @@ def train_scraped_model(
             'feature': available_features,
             'importance': model.feature_importances_
         }).sort_values('importance', ascending=False)
-        
+
         print("\nTop features:")
         for idx, row in importance_df.head(10).iterrows():
             print(f"  {row['feature']:<30} {row['importance']:.4f}")
-    
+
     # Save model
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     model_package = {
@@ -183,12 +193,14 @@ def train_scraped_model(
             'train_r2': train_r2,
             'test_rmse': test_rmse,
             'test_mae': test_mae,
-            'test_r2': test_r2
+            'test_r2': test_r2,
+            'cv_r2_mean': cv_scores.mean(),
+            'cv_r2_std': cv_scores.std()
         }
     }
     joblib.dump(model_package, save_path)
     print(f"\nModel saved to {save_path}")
-    
+
     return model_package, X_test, y_test, y_test_pred
 
 
@@ -218,6 +230,7 @@ def train_api_model(
         'title_len',
         'title_char_len',
         'title_upper_ratio',
+        'title_sentiment',
         'desc_len',
         'desc_char_len',
         'num_tags',
@@ -301,40 +314,48 @@ def train_api_model(
         raise ValueError(f"Unknown model_type: {model_type}")
     
     model.fit(X_train_scaled, y_train)
-    
+
+    # Cross-validation on training data
+    print("\n" + "="*60)
+    print("CROSS-VALIDATION (5-fold, training data)")
+    print("="*60)
+    cv_scores = cross_val_score(model, X_train_scaled, y_train, cv=5, scoring='r2', n_jobs=-1)
+    print(f"\n  Fold R² scores: {[f'{s:.4f}' for s in cv_scores]}")
+    print(f"  Mean R²: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
+
     # Predictions
     y_train_pred = model.predict(X_train_scaled)
     y_test_pred = model.predict(X_test_scaled)
-    
+
     # Evaluation
     print("\n" + "="*60)
     print("TRAINING RESULTS")
     print("="*60)
-    
+
     train_mse = mean_squared_error(y_train, y_train_pred)
     train_rmse = np.sqrt(train_mse)  # Compatible with all sklearn versions
     train_mae = mean_absolute_error(y_train, y_train_pred)
     train_r2 = r2_score(y_train, y_train_pred)
-    
+
     print(f"\nTraining Set Performance:")
     print(f"  RMSE: {train_rmse:.6f}")
     print(f"  MAE: {train_mae:.6f}")
     print(f"  R²: {train_r2:.4f}")
-    
+
     print("\n" + "="*60)
     print("TEST RESULTS")
     print("="*60)
-    
+
     test_mse = mean_squared_error(y_test, y_test_pred)
     test_rmse = np.sqrt(test_mse)  # Compatible with all sklearn versions
     test_mae = mean_absolute_error(y_test, y_test_pred)
     test_r2 = r2_score(y_test, y_test_pred)
-    
+
     print(f"\nTest Set Performance:")
     print(f"  RMSE: {test_rmse:.6f}")
     print(f"  MAE: {test_mae:.6f}")
     print(f"  R²: {test_r2:.4f}")
-    
+
     # Feature importance
     if hasattr(model, 'feature_importances_'):
         print("\n" + "="*60)
@@ -344,11 +365,11 @@ def train_api_model(
             'feature': final_features,
             'importance': model.feature_importances_
         }).sort_values('importance', ascending=False)
-        
+
         print("\nTop features:")
         for idx, row in importance_df.head(10).iterrows():
             print(f"  {row['feature']:<30} {row['importance']:.4f}")
-    
+
     # Save model
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     model_package = {
@@ -364,12 +385,14 @@ def train_api_model(
             'train_r2': train_r2,
             'test_rmse': test_rmse,
             'test_mae': test_mae,
-            'test_r2': test_r2
+            'test_r2': test_r2,
+            'cv_r2_mean': cv_scores.mean(),
+            'cv_r2_std': cv_scores.std()
         }
     }
     joblib.dump(model_package, save_path)
     print(f"\nModel saved to {save_path}")
-    
+
     return model_package, X_test, y_test, y_test_pred
 
 

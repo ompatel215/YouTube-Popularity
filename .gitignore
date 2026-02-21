@@ -17,6 +17,10 @@ venv/
 env/
 .venv/
 ENV/
+.venv
+
+# Claude Code local settings
+.claude/
 
 # IDE specific files
 .vscode/

@@ -8,8 +8,10 @@ import pandas as pd
 import numpy as np
 import isodate
 import re
+import ast
 from datetime import datetime, timedelta
 import os
+from textblob import TextBlob
 
 def iso_duration_to_minutes(duration):
     """Convert ISO 8601 duration to minutes (for API data)"""
@@ -165,7 +167,10 @@ def preprocess_scraped_data(filename="data/raw/scraped_videos.csv", output="data
     df['title_upper_ratio'] = df['title'].fillna('').apply(
         lambda x: sum(1 for c in x if c.isupper()) / len(x) if len(x) > 0 else 0
     )
-    
+    df['title_sentiment'] = df['title'].fillna('').apply(
+        lambda x: TextBlob(x).sentiment.polarity
+    )
+
     # Channel features
     df['has_channel'] = df['channel'].notna() & (df['channel'] != '')
     
@@ -173,7 +178,7 @@ def preprocess_scraped_data(filename="data/raw/scraped_videos.csv", output="data
     df['views_per_day'] = df['views'] / df['time_since_upload_days'].replace(0, np.nan)
     
     # Category prediction (we don't have this for scraped, so we'll infer basic categories)
-    df['is_music'] = df['title'].fillna('').str.lower().str.contains('music|song|official video|ft\.|feat\.')
+    df['is_music'] = df['title'].fillna('').str.lower().str.contains(r'music|song|official video|ft\.|feat\.')
     df['is_gaming'] = df['title'].fillna('').str.lower().str.contains('gameplay|gaming|game|minecraft|fortnite')
     df['is_educational'] = df['title'].fillna('').str.lower().str.contains('how to|tutorial|learn|course|lesson')
     
@@ -243,7 +248,10 @@ def preprocess_api_data(filename="data/raw/api_videos.csv", output="data/process
     df['title_upper_ratio'] = df['title'].fillna('').apply(
         lambda x: sum(1 for c in x if c.isupper()) / len(x) if len(x) > 0 else 0
     )
-    
+    df['title_sentiment'] = df['title'].fillna('').apply(
+        lambda x: TextBlob(x).sentiment.polarity
+    )
+
     # Description features
     print("Engineering description features...")
     df['desc_len'] = df['description'].fillna('').str.split().apply(len)
@@ -251,7 +259,17 @@ def preprocess_api_data(filename="data/raw/api_videos.csv", output="data/process
     
     # Tags features
     print("Engineering tags features...")
-    df['num_tags'] = df['tags'].apply(lambda x: len(eval(x)) if pd.notna(x) and x != '[]' else 0)
+    def parse_tags(x):
+        if pd.isna(x) or x == '[]':
+            return 0
+        try:
+            return len(ast.literal_eval(x))
+        except (ValueError, SyntaxError):
+            try:
+                return len(ast.literal_eval(x.replace('""', '"')))
+            except Exception:
+                return 0
+    df['num_tags'] = df['tags'].apply(parse_tags)
     
     # Category features
     df['categoryId'] = df['categoryId'].fillna('0')

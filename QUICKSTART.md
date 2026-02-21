@@ -40,19 +40,18 @@ jupyter notebook
 
 ```bash
 # Collect data (takes approximately 1 hour)
-cd src
-python scraping.py          # Collect via web scraping
-python youtube_api.py       # Collect via API
+python src/scraping.py          # Collect via web scraping
+python src/youtube_api.py       # Collect via API
 
 # Preprocess data
-python preprocess.py
+python src/preprocess.py
 
 # Train models
-python train.py scraped     # Train Model 1
-python train.py api         # Train Model 2
+python src/train.py scraped     # Train Model 1
+python src/train.py api         # Train Model 2
 
 # Evaluate and visualize
-python evaluate.py
+python src/evaluate.py
 ```
 
 ## Expected Output
@@ -136,14 +135,3 @@ python evaluate.py
 2. **Monitor API quota**: YouTube API has 10,000 units/day limit
 3. **Use headless mode**: Set `headless=True` for background scraping
 4. **Save intermediate results**: Don't delete CSV files
-
-## Project Submission Checklist
-
-- [ ] All 3000+ videos collected from each source
-- [ ] Both models trained successfully
-- [ ] All 8 visualizations generated
-- [ ] Final report written
-- [ ] Code pushed to GitHub
-- [ ] Repository set to public
-- [ ] README.md complete
-

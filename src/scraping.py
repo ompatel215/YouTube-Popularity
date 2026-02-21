@@ -196,8 +196,12 @@ def collect_diverse_dataset(target_count=3000, output_file="data/raw/scraped_vid
             seen_links.add(video['link'])
     
     print(f"After removing duplicates: {len(unique_data)} unique videos")
-    
+
     # Save to CSV
     save_to_csv(unique_data, output_file)
-    
+
     return unique_data
+
+
+if __name__ == "__main__":
+    collect_diverse_dataset(target_count=3000)

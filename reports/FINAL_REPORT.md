@@ -44,18 +44,20 @@ To predict views for a new video:
 ```python
 import joblib
 import pandas as pd
+from textblob import TextBlob
 
 # Load model
 model_package = joblib.load('models/scraped_model.pkl')
 
 # Prepare new video data
+title = "Top 10 Music Hits of 2024"
 new_video = pd.DataFrame({
     'duration_minutes': [5.5],
     'time_since_upload_days': [30],
-    'title_len': [8],
-    'title_char_len': [45],
-    'title_upper_ratio': [0.1],
-    'views_per_day': [1000],
+    'title_len': [len(title.split())],
+    'title_char_len': [len(title)],
+    'title_upper_ratio': [sum(1 for c in title if c.isupper()) / len(title)],
+    'title_sentiment': [TextBlob(title).sentiment.polarity],
     'has_channel': [1],
     'is_music': [1],
     'is_gaming': [0],

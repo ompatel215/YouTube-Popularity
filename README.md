@@ -64,7 +64,7 @@ The project demonstrates the differences between scraped and API-sourced data, c
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/youtube-popularity-analysis.git
+git clone https://github.com/ompatel/youtube-popularity-analysis.git
 cd youtube-popularity-analysis
 
 # Install dependencies
@@ -118,8 +118,8 @@ youtube-popularity-analysis/
 │   └── api_model.pkl
 │
 ├── reports/
-│   ├── figures/                 # Generated visualizations
-│   └── final_report.pdf         # Project report
+│   ├── figures/                 # Generated visualizations (8 plots)
+│   └── FINAL_REPORT.md          # Detailed project report
 │
 ├── requirements.txt             # Python dependencies
 └── README.md                    # Documentation
@@ -169,6 +169,7 @@ To use trained models for predictions on new data:
 ```python
 import joblib
 import pandas as pd
+from textblob import TextBlob
 
 # Load model
 model_package = joblib.load('models/scraped_model.pkl')
@@ -177,13 +178,14 @@ scaler = model_package['scaler']
 features = model_package['features']
 
 # Prepare new data
+title = "Top 10 Music Hits of 2024"
 new_video = pd.DataFrame({
     'duration_minutes': [5.5],
     'time_since_upload_days': [30],
-    'title_len': [8],
-    'title_char_len': [45],
-    'title_upper_ratio': [0.1],
-    'views_per_day': [1000],
+    'title_len': [len(title.split())],
+    'title_char_len': [len(title)],
+    'title_upper_ratio': [sum(1 for c in title if c.isupper()) / len(title)],
+    'title_sentiment': [TextBlob(title).sentiment.polarity],
     'has_channel': [1],
     'is_music': [1],
     'is_gaming': [0],
@@ -214,8 +216,8 @@ Both methods use diverse search queries to ensure variety across video categorie
 
 ### Sample Sizes
 
-- **Scraped Data**: 3,362 videos after preprocessing
-- **API Data**: 50 videos (limited by API quota during development)
+- **Scraped Data**: 3,066 videos after preprocessing
+- **API Data**: 2,456 videos after preprocessing
 
 ## Data Preprocessing
 
@@ -244,10 +246,10 @@ Both methods use diverse search queries to ensure variety across video categorie
 |---------|-------------|
 | duration_minutes | Video length in minutes |
 | time_since_upload_days | Days since upload |
-| views_per_day | Average views per day since upload |
 | title_len | Number of words in title |
 | title_char_len | Number of characters in title |
 | title_upper_ratio | Ratio of uppercase characters |
+| title_sentiment | TextBlob polarity score (-1 to 1) |
 | has_channel | Boolean indicating if channel name is available |
 | is_music | Boolean flag for music-related content |
 | is_gaming | Boolean flag for gaming-related content |
@@ -315,20 +317,24 @@ num_tags: 12
 #### Input Specifications
 - **Target Variable**: views (total view count)
 - **Number of Features**: 10
-- **Training Samples**: 2,689 videos (80%)
-- **Testing Samples**: 673 videos (20%)
+- **Training Samples**: 2,452 videos (80%)
+- **Testing Samples**: 614 videos (20%)
+- **Note**: `views_per_day` excluded from features — it is derived from the target (views ÷ days since upload), which would cause data leakage.
 
 #### Performance Metrics
 
 **Training Data:**
-- RMSE: 47,776,091
-- MAE: 4,254,694
-- R-squared: 0.9484
+- RMSE: 224,933,036
+- MAE: 52,378,711
+- R-squared: 0.7938
+
+**Cross-Validation (5-fold):**
+- Mean R²: 0.337 ± 0.085
 
 **Test Data:**
-- RMSE: 17,359,033
-- MAE: 3,453,995
-- R-squared: 0.9889
+- RMSE: 379,735,456
+- MAE: 105,035,828
+- R-squared: 0.4122
 
 ### Model 2: API Data Model
 
@@ -339,22 +345,23 @@ num_tags: 12
 #### Input Specifications
 - **Target Variable**: engagement_rate = (likes + comments) / views
 - **Number of Features**: 18 (after one-hot encoding categoryId)
-- **Training Samples**: 40 videos (80%)
-- **Testing Samples**: 10 videos (20%)
+- **Training Samples**: 1,964 videos (80%)
+- **Testing Samples**: 492 videos (20%)
 
 #### Performance Metrics
 
 **Training Data:**
-- RMSE: 0.0085
-- MAE: 0.0070
-- R-squared: 0.7255
+- RMSE: 0.0065
+- MAE: 0.0038
+- R-squared: 0.8506
+
+**Cross-Validation (5-fold):**
+- Mean R²: 0.363 ± 0.042
 
 **Test Data:**
-- RMSE: 0.0354
-- MAE: 0.0230
-- R-squared: -0.1889
-
-Note: The negative R-squared on test data indicates limited predictive power, likely due to small sample size (only 50 API videos collected).
+- RMSE: 0.0143
+- MAE: 0.0090
+- R-squared: 0.3869
 
 ## Feature Importance
 
@@ -364,11 +371,11 @@ Feature importance is calculated using scikit-learn's built-in `feature_importan
 
 ### Top Features - Scraped Model
 
-1. views_per_day - 0.5126 (51.26%)
-2. time_since_upload_days - 0.4678 (46.78%)
-3. title_char_len - 0.0069 (0.69%)
-4. title_len - 0.0048 (0.48%)
-5. title_upper_ratio - 0.0047 (0.47%)
+1. time_since_upload_days - 0.2707 (27.07%)
+2. is_music - 0.2120 (21.20%)
+3. title_upper_ratio - 0.1673 (16.73%)
+4. title_char_len - 0.1532 (15.32%)
+5. title_sentiment - 0.1146 (11.46%)
 
 ### Top Features - API Model
 
@@ -422,14 +429,14 @@ Four-panel visualization analyzing engagement patterns:
 ### Model Performance
 
 **Scraped Model:**
-- Excellent predictive performance (R-squared = 0.9889)
-- Strong correlation between views_per_day and total views
-- Performs well even with limited feature set
+- Moderate predictive performance (R² = 0.41 on test, CV mean = 0.34)
+- Predicts views from content signals alone — no data leakage
+- Feature importance balanced across 5+ meaningful features
 
 **API Model:**
-- Limited performance due to small dataset (50 videos)
-- Would benefit from larger sample size (3000+ as originally planned)
-- More features available but underfitting due to sample size
+- Solid performance with full dataset (2,456 videos, R² = 0.39 on test)
+- More balanced feature importance across 10+ content and metadata signals
+- CV mean R² = 0.36 confirms stable generalization
 
 ### Important Factors for Video Success
 
@@ -569,11 +576,11 @@ python-dotenv
 
 ## License
 
-This project is for educational purposes only.
+MIT License — free to use, modify, and distribute with attribution.
 
 ## Contact
 
-For questions or collaboration opportunities, please contact the project maintainer.
+Questions or collaboration opportunities? Reach out via [GitHub](https://github.com/ompatel).
 
 ---
 
